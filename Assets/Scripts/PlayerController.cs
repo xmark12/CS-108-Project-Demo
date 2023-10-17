@@ -37,10 +37,12 @@ public class PlayerController : MonoBehaviour
     public float movementForceInAir;
     public float airDragMultiplier = 0.95f;
     public float variableJumpHeightMultiplier = 0.1f;
+    public float wallHopForce;
     public float wallJumpForce;
 
     public float sprintSpeed = 2.0f;
 
+    public Vector2 wallHopDirection;
     public Vector2 wallJumpDirection;
 
     public Transform groundCheck;
@@ -53,13 +55,12 @@ public class PlayerController : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
         amountOfJumpsLeft = amountOfJumps;
-        wallJumpDirection.Normalize();
+        //wallJumpDirection.Normalize();
     }
 
     void Update()
     {
         CheckInput();
-        CheckMovementDirection();
         UpdateAnimations();
         CheckIfWallSliding();
 
@@ -76,6 +77,7 @@ public class PlayerController : MonoBehaviour
 
     private void FixedUpdate()
     {
+        CheckMovementDirection();
         ApplyMovement();
         CheckSurroundings();
     }
@@ -156,23 +158,13 @@ public class PlayerController : MonoBehaviour
 
     private void ApplyMovement()
     {
-        if (isGrounded)
-        {
-            rb.velocity = new Vector2(currentSpeed * movementInputDirection, rb.velocity.y);
-        }
-        else if (!isGrounded && !isWallSliding && movementInputDirection != 0)
-        {
-            Vector2 forceToAdd = new Vector2(movementForceInAir * movementInputDirection, 0);
-            rb.AddForce(forceToAdd);
-
-            if (Mathf.Abs(rb.velocity.x) > currentSpeed)
-            {
-                rb.velocity = new Vector2(currentSpeed * movementInputDirection, rb.velocity.y);
-            }
-        }
-        else if (!isGrounded && !isWallSliding && movementInputDirection == 0)
+        if (!isGrounded && !isWallSliding && movementInputDirection == 0)
         {
             rb.velocity = new Vector2(rb.velocity.x * airDragMultiplier, rb.velocity.y);
+        }
+        else
+        {
+            rb.velocity = new Vector2(currentSpeed * movementInputDirection, rb.velocity.y);
         }
 
         if (rb.velocity.x != 0)
