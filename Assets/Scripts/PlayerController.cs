@@ -4,11 +4,11 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    /******
+    /*************************************************************************
      * BUGS/Additions:
      * - Added temp sprint speed until can get dash into sprint working.
-     * - Sprinting while wall jumping gives you ridiculous speed.
-     ******/
+     * - Super Jump if press space and movement direction while wall sliding.
+     *************************************************************************/
 
     private float movementInputDirection;
 
@@ -20,12 +20,14 @@ public class PlayerController : MonoBehaviour
     public bool isTouchingWall;
     public bool isWallSliding;
     public bool isTouchingLedge;
-    public bool canClimbLedge = false;
     public bool ledgeDetected;
 
-    public Vector2 ledgePosBot;
-    public Vector2 ledgePos1;
-    public Vector2 ledgePos2;
+    //public Vector2 ledgePosBot;
+    public Vector2 offset1;
+    public Vector2 offset2;
+    public Vector2 climbBegunPosition;
+    public bool canGrabLedge = true;
+    public bool canClimb;
 
     private Rigidbody2D rb;
     private Animator anim;
@@ -35,6 +37,7 @@ public class PlayerController : MonoBehaviour
     private float currentSpeed;
     public float movementSpeed = 2.0f;
     public float jumpForce = 10.0f;
+    public float maxFallSpeed = 4.0f;
     public float groundCheckRadius;
     public float wallCheckDistance;
     public float wallSlideSpeed;
@@ -43,11 +46,6 @@ public class PlayerController : MonoBehaviour
     public float variableJumpHeightMultiplier = 0.1f;
     public float wallHopForce;
     public float wallJumpForce;
-
-    public float ledgeClimbXOffset1 = 0f;
-    public float ledgeClimbYOffset1 = 0f;
-    public float ledgeClimbXOffset2 = 0f;
-    public float ledgeClimbYOffset2 = 0f;
 
     public float sprintSpeed = 2.0f;
     public float coyoteTime = 0.2f;
@@ -80,12 +78,16 @@ public class PlayerController : MonoBehaviour
 
         if (Input.GetKey(KeyCode.LeftShift))
         {
-            Debug.Log("Sprint is being called");
             currentSpeed = movementSpeed + sprintSpeed;
         }
         else
         {
             currentSpeed = movementSpeed;
+        }
+        
+        if (rb.velocity.y < -maxFallSpeed)
+        {
+            rb.velocity = new Vector2(rb.velocity.x, -maxFallSpeed);
         }
     }
 
@@ -110,22 +112,30 @@ public class PlayerController : MonoBehaviour
 
     private void CheckLedgeClimb()
     {
-        if(ledgeDetected && !canClimbLedge)
+        if (ledgeDetected && canGrabLedge)
         {
-            canClimbLedge = true;
+            canGrabLedge = false;
 
-            if (isFacingRight)
+            Vector2 ledgePosition = transform.position;
+
+            climbBegunPosition = ledgePosition + offset1;
+
+            canClimb = true;
+        }
+
+        if (canClimb)
+        {
+            //transform.position = climbBegunPosition;
+            if (sr.flipX)
             {
-                ledgePos1 = new Vector2(Mathf.Floor(ledgePosBot.x + wallCheckDistance) - ledgeClimbXOffset1, Mathf.Floor(ledgePosBot.y) + ledgeClimbYOffset1);
-                ledgePos2 = new Vector2(Mathf.Floor(ledgePosBot.x + wallCheckDistance) + ledgeClimbXOffset2, Mathf.Floor(ledgePosBot.y) + ledgeClimbYOffset2);
+                rb.velocity = new Vector2(wallJumpForce * -wallJumpDirection.x, jumpForce);
             }
-            else
+            if (!sr.flipX)
             {
-                ledgePos1 = new Vector2(Mathf.Ceil(ledgePosBot.x - wallCheckDistance) + ledgeClimbXOffset1, Mathf.Floor(ledgePosBot.y) + ledgeClimbYOffset1);
-                ledgePos2 = new Vector2(Mathf.Ceil(ledgePosBot.x - wallCheckDistance) - ledgeClimbXOffset2, Mathf.Floor(ledgePosBot.y) + ledgeClimbYOffset2);
+                rb.velocity = new Vector2(wallJumpForce * wallJumpDirection.x, jumpForce);
             }
 
-            //left off here
+            canClimb = false;
         }
     }
 
@@ -138,12 +148,24 @@ public class PlayerController : MonoBehaviour
         else if (!sr.flipX)
             isTouchingWall = Physics2D.Raycast(wallCheck.position, transform.right, wallCheckDistance, whatIsGround);
 
-        isTouchingLedge = Physics2D.Raycast(ledgeCheck.position, transform.right, wallCheckDistance, whatIsGround);
+        if (sr.flipX) { 
+            isTouchingLedge = Physics2D.Raycast(ledgeCheck.position, -transform.right, wallCheckDistance, whatIsGround);
+        }
+        else if (!sr.flipX) { 
+            isTouchingLedge = Physics2D.Raycast(ledgeCheck.position, transform.right, wallCheckDistance, whatIsGround);
+        }
 
-        if(isTouchingWall && !isTouchingLedge && !ledgeDetected)
+        if (isTouchingWall && !isTouchingLedge)
         {
             ledgeDetected = true;
-            ledgePosBot = wallCheck.position;
+            //ledgePosBot = wallCheck.position;
+            //canClimbLedge = true;
+        }
+        else
+        {
+            ledgeDetected = false;
+            //canClimbLedge = false;
+            canGrabLedge = true;
         }
     }
 
@@ -241,7 +263,7 @@ public class PlayerController : MonoBehaviour
             isFacingRight = !isFacingRight;
             sr.flipX = !sr.flipX;
         }
-        else if ((isWallSliding || isTouchingWall) && movementInputDirection != 0) //Wall jump
+        else if ((isWallSliding || isTouchingWall) && ((Input.GetButtonUp("Jump") || Input.GetButtonDown("Jump")) || movementInputDirection != 0)) //Wall jump
         {
             isWallSliding = false;
             Vector2 forceToAdd = new Vector2(wallJumpForce * wallJumpDirection.x * movementInputDirection, wallJumpForce * wallJumpDirection.y);
@@ -254,5 +276,7 @@ public class PlayerController : MonoBehaviour
         Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
 
         Gizmos.DrawLine(wallCheck.position, new Vector3(wallCheck.position.x + wallCheckDistance, wallCheck.position.y, wallCheck.position.z));
+
+        Gizmos.DrawLine(ledgeCheck.position, new Vector3(ledgeCheck.position.x + wallCheckDistance, ledgeCheck.position.y, ledgeCheck.position.z));
     }
 }
