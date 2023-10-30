@@ -19,7 +19,7 @@ public class Timer : MonoBehaviour
     void Start()
     {
         timeIsRunning = true;
-        highestTimeText.text = "Record: 0 : 00";
+        highestTimeText.text = "Record: 00 : 00";
     }
 
     // Update is called once per frame

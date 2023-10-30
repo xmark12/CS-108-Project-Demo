@@ -16,6 +16,7 @@ public class PlayerController : MonoBehaviour
 
     public bool isFacingRight = true;
     public bool isWalking;
+    public bool isSprinting;
     public bool isGrounded;
     public bool isTouchingWall;
     public bool isWallSliding;
@@ -48,6 +49,9 @@ public class PlayerController : MonoBehaviour
     public float wallJumpForce;
 
     public float sprintSpeed = 2.0f;
+    public float distanceBetweenImages = 1f;
+    private float lastImageXpos;
+
     public float coyoteTime = 0.2f;
     private float coyoteTimeCounter;
     public float jumpBufferTime = 0.2f;
@@ -62,6 +66,15 @@ public class PlayerController : MonoBehaviour
 
     public LayerMask whatIsGround;
 
+    [SerializeField] private AudioSource runSoundEffect;
+    [SerializeField] private AudioSource jumpSoundEffect;
+    [SerializeField] private AudioSource breezeSoundEffect;
+    [SerializeField] private AudioSource wallConnectSoundEffect;
+
+    public bool isJumpSound = false;
+    public bool isRunSound = false;
+    public bool isWallConnectSound = false;
+
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -73,17 +86,6 @@ public class PlayerController : MonoBehaviour
     {
         CheckInput();
         UpdateAnimations();
-        CheckIfWallSliding();
-        CheckLedgeClimb();
-
-        if (Input.GetKey(KeyCode.LeftShift))
-        {
-            currentSpeed = movementSpeed + sprintSpeed;
-        }
-        else
-        {
-            currentSpeed = movementSpeed;
-        }
         
         if (rb.velocity.y < -maxFallSpeed)
         {
@@ -94,8 +96,31 @@ public class PlayerController : MonoBehaviour
     private void FixedUpdate()
     {
         CheckMovementDirection();
+	    CheckIfWallSliding();
+	    CheckLedgeClimb();
         ApplyMovement();
         CheckSurroundings();
+
+	    if ((rb.velocity.x != 0 || !isGrounded) && !isWallSliding)
+        {
+            isSprinting = true;
+
+            currentSpeed = movementSpeed + sprintSpeed;
+
+            AfterimagePool.Instance.GetFromPool();
+            lastImageXpos = transform.position.x;
+
+            if (Mathf.Abs(transform.position.x - lastImageXpos) > distanceBetweenImages)
+            {
+                AfterimagePool.Instance.GetFromPool();
+                lastImageXpos = transform.position.x;
+            }
+        }
+        else
+        {
+            currentSpeed = movementSpeed;
+            isSprinting = false;
+        }
     }
 
     private void CheckIfWallSliding()
@@ -184,6 +209,7 @@ public class PlayerController : MonoBehaviour
     private void UpdateAnimations()
     {
         anim.SetBool("isWalking", isWalking);
+        anim.SetBool("isSprinting", isSprinting);
         anim.SetBool("isGrounded", isGrounded);
         anim.SetFloat("yVelocity", rb.velocity.y);
         anim.SetBool("isWallSliding", isWallSliding);
@@ -193,18 +219,50 @@ public class PlayerController : MonoBehaviour
     {
         movementInputDirection = Input.GetAxisRaw("Horizontal");
 
+        if (!isRunSound && isSprinting)
+        {
+            runSoundEffect.Play();
+            isRunSound = true;
+        }
+        if (rb.velocity.x == 0 || !isGrounded || !isSprinting)
+        {
+            runSoundEffect.Stop();
+            isRunSound = false;
+        }
+
         if (isGrounded)
         {
             coyoteTimeCounter = coyoteTime;
+            breezeSoundEffect.Stop();
+            isJumpSound = false;
         }
         else
         {
             coyoteTimeCounter -= Time.deltaTime;
         }
 
-        if (Input.GetButtonDown("Jump"))
+        if (!isJumpSound && (!isGrounded || !isWallSliding))
+        {
+            breezeSoundEffect.PlayDelayed(0.5f);
+            isJumpSound = true;
+        }
+
+        if (isWallSliding && !isWallConnectSound)
+        {
+            wallConnectSoundEffect.Play();
+            isWallConnectSound = true;
+        }
+
+        if (!isWallSliding)
+        {
+            wallConnectSoundEffect.Stop();
+            isWallConnectSound = false;
+        }
+
+        if (Input.GetButtonDown("Jump") || Input.GetKeyDown(KeyCode.W))
         {
             jumpBufferCounter = jumpBufferTime;
+            jumpSoundEffect.Play();
         }
         else
         {
@@ -218,7 +276,7 @@ public class PlayerController : MonoBehaviour
             jumpBufferCounter = 0f;
         }
 
-        if (Input.GetButtonUp("Jump") && rb.velocity.y > 0f)
+        if ((Input.GetButtonUp("Jump") && rb.velocity.y > 0f) || (Input.GetKeyUp(KeyCode.W) && rb.velocity.y > 0f))
         {
             rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y * variableJumpHeightMultiplier);
 
@@ -237,7 +295,7 @@ public class PlayerController : MonoBehaviour
             rb.velocity = new Vector2(currentSpeed * movementInputDirection, rb.velocity.y);
         }
 
-        if (rb.velocity.x != 0)
+        if (rb.velocity.x != 0 && !isSprinting)
         {
             isWalking = true;
         }
@@ -252,7 +310,13 @@ public class PlayerController : MonoBehaviour
             {
                 rb.velocity = new Vector2(rb.velocity.x, -wallSlideSpeed);
             }
+
+            breezeSoundEffect.Stop();
+            isJumpSound = false;
+            //Debug.Log("Wall sliding");
         }
+
+        
     }
 
     private void Flip()
@@ -263,11 +327,12 @@ public class PlayerController : MonoBehaviour
             isFacingRight = !isFacingRight;
             sr.flipX = !sr.flipX;
         }
-        else if ((isWallSliding || isTouchingWall) && ((Input.GetButtonUp("Jump") || Input.GetButtonDown("Jump")) || movementInputDirection != 0)) //Wall jump
+        else if ((isWallSliding || isTouchingWall) && ((Input.GetButtonDown("Jump")) || Input.GetKeyDown(KeyCode.W) || movementInputDirection != 0)) //Wall jump
         {
             isWallSliding = false;
             Vector2 forceToAdd = new Vector2(wallJumpForce * wallJumpDirection.x * movementInputDirection, wallJumpForce * wallJumpDirection.y);
             rb.AddForce(forceToAdd, ForceMode2D.Impulse);
+            jumpSoundEffect.Play();
         }
     }
 

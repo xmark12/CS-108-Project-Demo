@@ -10,5 +10,7 @@ public class NewGame : MonoBehaviour
     public void NextScene()
     {
         SceneManager.LoadScene(scene);
+
+        Time.timeScale = 1;
     }
 }
