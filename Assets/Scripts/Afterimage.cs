@@ -27,6 +27,7 @@ public class Afterimage : MonoBehaviour
 
         alpha = alphaSet;
         SR.sprite = playerSR.sprite;
+        SR.flipX = playerSR.flipX;
         transform.position = player.position;
         transform.rotation = player.rotation;
         timeActivated = Time.time;

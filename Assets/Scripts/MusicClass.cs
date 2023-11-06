@@ -14,6 +14,7 @@ public class MusicClass : MonoBehaviour
 
     public void PlayMusic()
     {
+        AudioListener.pause = false;
         if (_audioSource.isPlaying) return;
         _audioSource.Play();
     }

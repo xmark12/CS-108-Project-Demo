@@ -32,5 +32,22 @@ public class ChangeMusic : MonoBehaviour
             stageMusic.Play();
             alreadyPlayedStageMusic = true;
         }
+
+        if (fl.stagePaused)
+        {
+            stageMusic.Pause();
+            AudioListener.pause = true;
+            alreadyPlayedStageMusic = false;
+        }
+        else if (!fl.stagePaused && !fl.stageFinished)
+        {
+            AudioListener.pause = false;
+            stageMusic.UnPause();
+            alreadyPlayedStageMusic = true;
+        }
+        else if (!fl.stagePaused && fl.stageFinished)
+        {
+            
+        }
     }
 }

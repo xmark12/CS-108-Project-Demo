@@ -75,6 +75,11 @@ public class PlayerController : MonoBehaviour
     public bool isRunSound = false;
     public bool isWallConnectSound = false;
 
+    public bool pauseTrigger = false;
+    public NewGame ng;
+    public NewGame ng2;
+    public FinishLine fl;
+
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -90,6 +95,27 @@ public class PlayerController : MonoBehaviour
         if (rb.velocity.y < -maxFallSpeed)
         {
             rb.velocity = new Vector2(rb.velocity.x, -maxFallSpeed);
+        }
+
+        if (Input.GetKeyDown(KeyCode.P))
+        {
+            fl.stagePaused = true;
+        }
+
+        if (fl.stagePaused)
+        {
+            if (Input.GetKeyDown(KeyCode.C))
+            {
+                fl.stagePaused = false;
+            }
+            if (Input.GetKeyDown(KeyCode.R))
+            {
+                ng.NextScene();
+            }
+            if (Input.GetKeyDown(KeyCode.M))
+            {
+                ng2.NextScene();
+            }
         }
     }
 
