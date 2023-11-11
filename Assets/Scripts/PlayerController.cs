@@ -6,7 +6,6 @@ public class PlayerController : MonoBehaviour
 {
     /*************************************************************************
      * BUGS/Additions:
-     * - Added temp sprint speed until can get dash into sprint working.
      * - Super Jump if press space and movement direction while wall sliding.
      *************************************************************************/
 
@@ -35,7 +34,7 @@ public class PlayerController : MonoBehaviour
 
     public SpriteRenderer sr;
 
-    private float currentSpeed;
+    private float currentSpeed = 0;
     public float movementSpeed = 2.0f;
     public float jumpForce = 10.0f;
     public float maxFallSpeed = 4.0f;
@@ -47,6 +46,10 @@ public class PlayerController : MonoBehaviour
     public float variableJumpHeightMultiplier = 0.1f;
     public float wallHopForce;
     public float wallJumpForce;
+
+    public float acceleration = 0.01f;
+    public float currentForwardDirection = 1;
+    public float currentAccel = 0;
 
     public float sprintSpeed = 2.0f;
     public float distanceBetweenImages = 1f;
@@ -127,26 +130,58 @@ public class PlayerController : MonoBehaviour
         ApplyMovement();
         CheckSurroundings();
 
-	    if ((rb.velocity.x != 0 || !isGrounded) && !isWallSliding)
+        if (((Mathf.Abs(movementInputDirection) > 0) && !isWallSliding) || ((rb.velocity.y == -maxFallSpeed && !isWallSliding)))
+        {
+            currentAccel += acceleration * (Time.fixedDeltaTime * 0.05f);
+        }
+        else if (isWallSliding)
+        {
+
+        }
+        else if (isTouchingWall && isGrounded)
+        {
+            currentAccel = 0;
+        }
+        else
+        {
+            currentAccel -= acceleration * (Time.fixedDeltaTime * 0.5f);
+        }
+
+        currentAccel = Mathf.Clamp(currentAccel, 0, 2);
+
+        if (((rb.velocity.x != 0 || !isGrounded) && !isTouchingWall))// && !isWallSliding)
         {
             isSprinting = true;
 
-            currentSpeed = movementSpeed + sprintSpeed;
+            currentSpeed = movementSpeed + sprintSpeed + currentAccel;
 
-            AfterimagePool.Instance.GetFromPool();
-            lastImageXpos = transform.position.x;
-
-            if (Mathf.Abs(transform.position.x - lastImageXpos) > distanceBetweenImages)
+            if (currentSpeed >= (movementSpeed + 1.25f + sprintSpeed))
             {
                 AfterimagePool.Instance.GetFromPool();
                 lastImageXpos = transform.position.x;
+
+                if (Mathf.Abs(transform.position.x - lastImageXpos) > distanceBetweenImages)
+                {
+                    AfterimagePool.Instance.GetFromPool();
+                    lastImageXpos = transform.position.x;
+                }
             }
+            else
+            {
+
+            }
+        }
+        else if (isTouchingWall && isGrounded)
+        {
+            currentSpeed = 0;
+            isSprinting = false;
         }
         else
         {
             currentSpeed = movementSpeed;
             isSprinting = false;
         }
+        currentSpeed = Mathf.Clamp(currentSpeed, 0, (movementSpeed + 1.5f + sprintSpeed));
     }
 
     private void CheckIfWallSliding()
@@ -172,6 +207,8 @@ public class PlayerController : MonoBehaviour
             climbBegunPosition = ledgePosition + offset1;
 
             canClimb = true;
+
+            currentAccel -= acceleration * (Time.fixedDeltaTime);
         }
 
         if (canClimb)
@@ -187,6 +224,8 @@ public class PlayerController : MonoBehaviour
             }
 
             canClimb = false;
+
+            currentAccel -= acceleration * (Time.fixedDeltaTime);
         }
     }
 
@@ -285,7 +324,7 @@ public class PlayerController : MonoBehaviour
             isWallConnectSound = false;
         }
 
-        if (Input.GetButtonDown("Jump") || Input.GetKeyDown(KeyCode.W))
+        if (Input.GetButtonDown("Jump") || Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow))
         {
             jumpBufferCounter = jumpBufferTime;
             jumpSoundEffect.Play();
@@ -302,7 +341,7 @@ public class PlayerController : MonoBehaviour
             jumpBufferCounter = 0f;
         }
 
-        if ((Input.GetButtonUp("Jump") && rb.velocity.y > 0f) || (Input.GetKeyUp(KeyCode.W) && rb.velocity.y > 0f))
+        if ((Input.GetButtonUp("Jump") && rb.velocity.y > 0f) || (Input.GetKeyUp(KeyCode.W) && rb.velocity.y > 0f) || (Input.GetKeyUp(KeyCode.UpArrow) && rb.velocity.y > 0f))
         {
             rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y * variableJumpHeightMultiplier);
 
