@@ -236,6 +236,9 @@ MonoBehaviour:
   variableJumpHeightMultiplier: 0
   wallHopForce: 2
   wallJumpForce: 2
+  acceleration: 5
+  currentForwardDirection: 1
+  currentAccel: 0
   sprintSpeed: 1.5
   distanceBetweenImages: 1
   coyoteTime: 0.4
