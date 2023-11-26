@@ -9,7 +9,7 @@ public class PlayerController : MonoBehaviour
      * - Super Jump if press space and movement direction while wall sliding.
      *************************************************************************/
 
-    private float movementInputDirection;
+    public float movementInputDirection;
 
     private int facingDirection = 1;
 
