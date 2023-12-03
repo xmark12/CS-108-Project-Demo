@@ -60,6 +60,20 @@ public class PlayerController : MonoBehaviour
     public float jumpBufferTime = 0.2f;
     private float jumpBufferCounter;
 
+    public bool canDash = true;
+    public bool isDashing = false;
+    public float dashingTime;
+    public float dashSpeed;
+    public float dashJumpIncrease;
+    public float timeBetweenDashes;
+
+    public bool canSlide = true;
+    public bool isSliding = false;
+    public float slidingTime;
+    public float slideSpeed;
+    public float slideJumpIncrease;
+    public float timeBetweenSlides;
+
     public Vector2 wallHopDirection;
     public Vector2 wallJumpDirection;
 
@@ -81,6 +95,7 @@ public class PlayerController : MonoBehaviour
     public bool pauseTrigger = false;
     public NewGame ng;
     public NewGame ng2;
+    public NewGame ng3;
     public FinishLine fl;
 
     void Start()
@@ -94,13 +109,29 @@ public class PlayerController : MonoBehaviour
     {
         CheckInput();
         UpdateAnimations();
-        
+
+        if ((Mathf.Abs(rb.velocity.x) >= 0.1) && !isWallSliding) //&& isGrounded
+        {
+            if (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.I))
+            {
+                DashAbility();
+            }
+        }
+
+        if (isGrounded && !isWallSliding)
+        {
+            if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.O))
+            {
+                SlideAbility();
+            }
+        }
+
         if (rb.velocity.y < -maxFallSpeed)
         {
             rb.velocity = new Vector2(rb.velocity.x, -maxFallSpeed);
         }
 
-        if (Input.GetKeyDown(KeyCode.P))
+        if (Input.GetKeyDown(KeyCode.P) && !fl.stageFinished)
         {
             fl.stagePaused = true;
         }
@@ -118,6 +149,22 @@ public class PlayerController : MonoBehaviour
             if (Input.GetKeyDown(KeyCode.M))
             {
                 ng2.NextScene();
+            }
+        }
+
+        if (fl.stageFinished)
+        {
+            if (Input.GetKeyDown(KeyCode.R))
+            {
+                ng.NextScene();
+            }
+            if (Input.GetKeyDown(KeyCode.M))
+            {
+                ng2.NextScene();
+            }
+            if (Input.GetKeyDown(KeyCode.N))
+            {
+                ng3.NextScene();
             }
         }
     }
@@ -154,22 +201,6 @@ public class PlayerController : MonoBehaviour
             isSprinting = true;
 
             currentSpeed = movementSpeed + sprintSpeed + currentAccel;
-
-            if (currentSpeed >= (movementSpeed + 1.25f + sprintSpeed))
-            {
-                AfterimagePool.Instance.GetFromPool();
-                lastImageXpos = transform.position.x;
-
-                if (Mathf.Abs(transform.position.x - lastImageXpos) > distanceBetweenImages)
-                {
-                    AfterimagePool.Instance.GetFromPool();
-                    lastImageXpos = transform.position.x;
-                }
-            }
-            else
-            {
-
-            }
         }
         else if (isTouchingWall && isGrounded)
         {
@@ -182,6 +213,22 @@ public class PlayerController : MonoBehaviour
             isSprinting = false;
         }
         currentSpeed = Mathf.Clamp(currentSpeed, 0, (movementSpeed + 1.5f + sprintSpeed));
+        AfterImage();
+    }
+
+    private void AfterImage()
+    {
+        if (currentSpeed >= (3.25f + sprintSpeed))
+        {
+            AfterimagePool.Instance.GetFromPool();
+            lastImageXpos = transform.position.x;
+
+            if (Mathf.Abs(transform.position.x - lastImageXpos) > distanceBetweenImages)
+            {
+                AfterimagePool.Instance.GetFromPool();
+                lastImageXpos = transform.position.x;
+            }
+        }
     }
 
     private void CheckIfWallSliding()
@@ -216,11 +263,11 @@ public class PlayerController : MonoBehaviour
             //transform.position = climbBegunPosition;
             if (sr.flipX)
             {
-                rb.velocity = new Vector2(wallJumpForce * -wallJumpDirection.x, jumpForce);
+                rb.velocity = new Vector2(wallJumpForce * -wallJumpDirection.x, jumpForce+1.65f);
             }
             if (!sr.flipX)
             {
-                rb.velocity = new Vector2(wallJumpForce * wallJumpDirection.x, jumpForce);
+                rb.velocity = new Vector2(wallJumpForce * wallJumpDirection.x, jumpForce+1.65f);
             }
 
             canClimb = false;
@@ -278,18 +325,20 @@ public class PlayerController : MonoBehaviour
         anim.SetBool("isGrounded", isGrounded);
         anim.SetFloat("yVelocity", rb.velocity.y);
         anim.SetBool("isWallSliding", isWallSliding);
+        anim.SetBool("isDashing", isDashing);
+        anim.SetBool("IsSliding", isSliding);
     }
 
     private void CheckInput()
     {
         movementInputDirection = Input.GetAxisRaw("Horizontal");
 
-        if (!isRunSound && isSprinting)
+        if (!isRunSound && isSprinting && !isDashing && !isSliding)
         {
             runSoundEffect.Play();
             isRunSound = true;
         }
-        if (rb.velocity.x == 0 || !isGrounded || !isSprinting)
+        if (rb.velocity.x == 0 || !isGrounded || !isSprinting || isDashing || isSliding)
         {
             runSoundEffect.Stop();
             isRunSound = false;
@@ -360,7 +409,7 @@ public class PlayerController : MonoBehaviour
             rb.velocity = new Vector2(currentSpeed * movementInputDirection, rb.velocity.y);
         }
 
-        if (rb.velocity.x != 0 && !isSprinting)
+        if (rb.velocity.x != 0 && !isSprinting && !isDashing)
         {
             isWalking = true;
         }
@@ -408,5 +457,59 @@ public class PlayerController : MonoBehaviour
         Gizmos.DrawLine(wallCheck.position, new Vector3(wallCheck.position.x + wallCheckDistance, wallCheck.position.y, wallCheck.position.z));
 
         Gizmos.DrawLine(ledgeCheck.position, new Vector3(ledgeCheck.position.x + wallCheckDistance, ledgeCheck.position.y, ledgeCheck.position.z));
+    }
+
+    private void DashAbility()
+    {
+        if (canDash)
+        {
+            jumpSoundEffect.Play();
+            StartCoroutine(Dash());
+        }
+    }
+
+    private IEnumerator Dash()
+    {
+        canDash = false;
+        isDashing = true;
+        float saveMovementSpeed = movementSpeed;
+        float saveJumpForce = jumpForce;
+        movementSpeed += dashSpeed;
+        jumpForce += dashJumpIncrease;
+        yield return new WaitForSeconds(dashingTime);
+        movementSpeed = saveMovementSpeed;
+        jumpForce = saveJumpForce;
+        yield return new WaitForSeconds(timeBetweenDashes);
+        canDash = true;
+        isDashing = false;
+        movementSpeed = 2;
+        jumpForce = 7;
+    }
+    
+    private void SlideAbility()
+    {
+        if (canSlide)
+        {
+            jumpSoundEffect.Play();
+            StartCoroutine(Slide());
+        }
+    }
+
+    private IEnumerator Slide()
+    {
+        canSlide = false;
+        isSliding = true;
+        float saveMovementSpeed = movementSpeed;
+        float saveJumpForce = jumpForce;
+        movementSpeed += slideSpeed;
+        jumpForce += slideJumpIncrease;
+        yield return new WaitForSeconds(slidingTime);
+        movementSpeed = saveMovementSpeed;
+        jumpForce = saveJumpForce;
+        yield return new WaitForSeconds(timeBetweenSlides);
+        canSlide = true;
+        isSliding = false;
+        movementSpeed = 2;
+        jumpForce = 7;
     }
 }

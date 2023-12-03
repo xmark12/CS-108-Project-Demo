@@ -12,11 +12,15 @@ public class Turret : MonoBehaviour
     public GameObject bullet;
     public GameObject bulletOrigin;
     private Transform player;
+    public FieldOfView fov;
+
+    private Transform aimTransform;
 
     // Start is called before the first frame update
     void Start()
     {
         player = GameObject.FindGameObjectWithTag("Player").transform;
+        aimTransform = transform.Find("Aim");
     }
 
     // Update is called once per frame
@@ -24,11 +28,15 @@ public class Turret : MonoBehaviour
     {
         aggroRange = Vector2.Distance(player.position, transform.position);
 
-        if (aggroRange < lineOfSight && nextFireTime < Time.time)
+        if (aggroRange < lineOfSight && nextFireTime < Time.time && fov.playerDetected)
         {
             //transform.position = Vector2.MoveTowards(this.transform.position, player.position, speed * Time.deltaTime);
             Shoot();
             nextFireTime = Time.time + fireRate;
+
+            Vector3 aimDirection = (player.position - transform.position).normalized;
+            float angle = Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg;
+            aimTransform.eulerAngles = new Vector3(0, 0, angle);
         }
     }
 

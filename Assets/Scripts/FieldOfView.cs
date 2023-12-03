@@ -10,21 +10,26 @@ public class FieldOfView : MonoBehaviour
     [SerializeField] private int rayCount = 50;
     [SerializeField] public float viewDistance = 32;
     private Vector2 origin;
-    float angle;
+    private float angle = 90f;
 
     private int layerGround;
     public bool playerDetected = false;
+    public Renderer myrenderer;
+    OnDeath od;
+
+    private float timer = 0f;
 
     //public HealthComponent health;
     //public EnemyBehave behave;
 
     void Start()
     {
-        Renderer myrenderer = GetComponent<Renderer>();
+        od = GameObject.FindGameObjectWithTag("Player").GetComponent<OnDeath>();
+
+        myrenderer = GetComponent<Renderer>();
         myrenderer.sortingLayerID = SortingLayer.layers[1].id;
         myrenderer.material.color = new Color(1f, 1f, 1f, 0.2f);
         origin = Vector2.zero;
-        angle = 10f;
 
         layerGround = LayerMask.NameToLayer("Player");
     }
@@ -52,22 +57,37 @@ public class FieldOfView : MonoBehaviour
             {
                 //if hit, go up to view distance
                 vertex = GetVectorFromAngle(angle) * viewDistance;
+                timer += Time.deltaTime / 100;
+                if (timer >= 5 || od.died)
+                {
+                    playerDetected = false;
+                    myrenderer.material.color = new Color(1f, 1f, 1f, 0.2f);
+                    timer = 0f;
+                }
             }
             else
             {
                 //if hit, go up to point
                 vertex = hit.point - origin;
-
+                //Debug.Log(playerDetected);
                 if (hit.transform.gameObject.layer == layerGround)
                 {
+                    //Debug.Log("In detected player");
                     playerDetected = true;
+                    myrenderer.material.color = new Color(1f, 0f, 0f, 0.2f);
+                    timer = 0f;
                 }
-                /*
-                else if (hit.transform.gameObject.layer != layerGround)
+                else
                 {
-                    playerDetected = false;
+                    //Debug.Log("In not detected player");
+                    timer += Time.deltaTime / 100;
+                    if (timer >= 5 || od.died)
+                    {
+                        playerDetected = false;
+                        myrenderer.material.color = new Color(1f, 1f, 1f, 0.2f);
+                        timer = 0f;
+                    }
                 }
-                */
             }
             vertices[vertexIndex] = vertex;
             if (i > 0)

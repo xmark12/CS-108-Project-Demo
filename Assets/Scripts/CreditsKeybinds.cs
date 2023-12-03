@@ -5,6 +5,7 @@ using UnityEngine;
 public class CreditsKeybinds : MonoBehaviour
 {
     public NewGame ng;
+    public NewGame ng1;
 
     // Start is called before the first frame update
     void Start()
@@ -15,9 +16,13 @@ public class CreditsKeybinds : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.B))
+        if (Input.GetKeyDown(KeyCode.M))
         {
             ng.NextScene();
+        }
+        if (Input.GetKeyDown(KeyCode.Alpha1))
+        {
+            ng1.NextScene();
         }
     }
 }

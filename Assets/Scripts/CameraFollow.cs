@@ -12,8 +12,8 @@ public class CameraFollow : MonoBehaviour
 
     [SerializeField] private Transform target;
 
-    private float count = 0.0f;
-    private bool finishedCount = false;
+    //private float count = 0.0f;
+    //private bool finishedCount = false;
 
     private void FixedUpdate()
     {
